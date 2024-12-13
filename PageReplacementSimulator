@@ -1,0 +1,137 @@
+import java.util.*;
+
+public class PageReplacementSimulator {
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+
+        System.out.println("Digite a sequência de páginas (separadas por espaços):");
+        String[] input = scanner.nextLine().split(" ");
+        int[] pages = Arrays.stream(input).mapToInt(Integer::parseInt).toArray();
+
+        System.out.println("Digite o número de quadros de página:");
+        int frames = scanner.nextInt();
+
+        PageReplacementSimulator simulator = new PageReplacementSimulator();
+
+        System.out.println("FIFO - " + simulator.fifo(pages, frames) + " faltas de página");
+        System.out.println("LRU - " + simulator.lru(pages, frames) + " faltas de página");
+        System.out.println("Relógio - " + simulator.clock(pages, frames) + " faltas de página");
+        System.out.println("Ótimo - " + simulator.optimal(pages, frames) + " faltas de página");
+    }
+
+    public int fifo(int[] pages, int frames) {
+        Set<Integer> set = new HashSet<>(frames);
+        Queue<Integer> queue = new LinkedList<>();
+        int pageFaults = 0;
+
+        for (int page : pages) {
+            if (!set.contains(page)) {
+                if (set.size() == frames) {
+                    int oldest = queue.poll();
+                    set.remove(oldest);
+                }
+                set.add(page);
+                queue.add(page);
+                pageFaults++;
+            }
+        }
+
+        return pageFaults;
+    }
+
+    public int lru(int[] pages, int frames) {
+        Set<Integer> set = new HashSet<>(frames);
+        Map<Integer, Integer> indexes = new HashMap<>();
+        int pageFaults = 0;
+
+        for (int i = 0; i < pages.length; i++) {
+            if (!set.contains(pages[i])) {
+                if (set.size() == frames) {
+                    int lru = Integer.MAX_VALUE, val = Integer.MIN_VALUE;
+                    for (Integer page : set) {
+                        if (indexes.get(page) < lru) {
+                            lru = indexes.get(page);
+                            val = page;
+                        }
+                    }
+                    set.remove(val);
+                }
+                set.add(pages[i]);
+                pageFaults++;
+            }
+            indexes.put(pages[i], i);
+        }
+
+        return pageFaults;
+    }
+
+    public int clock(int[] pages, int frames) {
+        int[] frame = new int[frames];
+        int[] useBit = new int[frames];
+        int pointer = 0, pageFaults = 0;
+
+        Arrays.fill(frame, -1);
+
+        for (int page : pages) {
+            boolean found = false;
+            for (int i = 0; i < frames; i++) {
+                if (frame[i] == page) {
+                    useBit[i] = 1;
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                while (useBit[pointer] == 1) {
+                    useBit[pointer] = 0;
+                    pointer = (pointer + 1) % frames;
+                }
+                frame[pointer] = page;
+                useBit[pointer] = 1;
+                pointer = (pointer + 1) % frames;
+                pageFaults++;
+            }
+        }
+
+        return pageFaults;
+    }
+
+    public int optimal(int[] pages, int frames) {
+        Set<Integer> set = new HashSet<>(frames);
+        int pageFaults = 0;
+
+        for (int i = 0; i < pages.length; i++) {
+            if (!set.contains(pages[i])) {
+                if (set.size() < frames) {
+                    set.add(pages[i]);
+                    pageFaults++;
+                } else {
+                    int farthest = i + 1, val = Integer.MIN_VALUE;
+                    for (Integer page : set) {
+                        int j;
+                        for (j = i + 1; j < pages.length; j++) {
+                            if (pages[j] == page) {
+                                if (j > farthest) {
+                                    farthest = j;
+                                    val = page;
+                                }
+                                break;
+                            }
+                        }
+                        if (j == pages.length) {
+                            val = page;
+                            break;
+                        }
+                    }
+                    set.remove(val);
+                    set.add(pages[i]);
+                    pageFaults++;
+                }
+            }
+        }
+
+        return pageFaults;
+    }
+}
